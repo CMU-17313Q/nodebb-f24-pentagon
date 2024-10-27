@@ -78,12 +78,12 @@ jobs:
           node app --setup="${SETUP}" --ci="${CI}"
 
       - name: Run OWASP ZAP Docker Scan
-        uses: zaproxy/action-baseline@v0.6.1
+        uses: zaproxy/action-baseline@v0.3.0
         with:
-          docker_name: 'owasp/zap2docker-stable'
-          target: http://localhost:4567
+          token: ${{ secrets.GITHUB_TOKEN }}
+          target: 'https://localhost:4567/'
           rules_file_name: '.zap/rules.tsv'
-          cmd_options: '-a' 
+          cmd_options: '-a'
 
       - name: Run ESLint
         run: npm run lint
