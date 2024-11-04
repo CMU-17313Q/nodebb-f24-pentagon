@@ -1,36 +1,90 @@
+# Done with help of AI
 name: Stryker Mutation Testing
 
 on:
   push:
-    branches: [main]
+    branches: [f24]
   pull_request:
-    branches: [main]
+    branches: [f24]
+
+permissions:
+  contents: read  # for actions/checkout to fetch code
 
 jobs:
   mutation-testing:
     runs-on: ubuntu-latest
+    env:
+      TEST_ENV: 'production'
+
+    services:
+      redis:
+        image: 'redis:7.2.4'
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
 
     steps:
+      # Step 1: Check out repository code
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
+      # Step 2: Copy package.json (adjust if needed)
+      - run: cp install/package.json package.json
+
+      # Step 3: Set up Node.js
       - name: Set up Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
-          node-version: '16' # Ensure this matches the Node version your project uses
+          node-version: '20'
 
+      # Step 4: Install dependencies
       - name: Install dependencies
         run: npm install
 
-      - name: Run tests
-        run: npm test # Ensure your tests are working before running Stryker
+      # Step 5: Setup Redis environment
+      - name: Setup for Redis
+        env:
+          SETUP: >-
+            {
+              "url": "http://127.0.0.1:4567/forum",
+              "secret": "abcdef",
+              "admin:username": "admin",
+              "admin:email": "test@example.org",
+              "admin:password": "hAN3Eg8W",
+              "admin:password:confirm": "hAN3Eg8W",
+              "database": "redis",
+              "redis:host": "127.0.0.1",
+              "redis:port": 6379,
+              "redis:password": "",
+              "redis:database": 0
+            }
+          CI: >-
+            {
+              "host": "127.0.0.1",
+              "database": 1,
+              "port": 6379
+            }
+        run: |
+          node app --setup="${SETUP}" --ci="${CI}"
 
+      # Step 6: Run tests to ensure they pass before running Stryker
+      - name: Run tests
+        run: npm test
+
+      # Step 7: Install Stryker
       - name: Install Stryker
         run: npm install --save-dev @stryker-mutator/core
 
+      # Step 8: Run Stryker Mutation Testing
       - name: Run Stryker Mutation Testing
         run: npx stryker run
 
+      # Step 9: Upload Stryker HTML Report as an artifact
       - name: Upload Stryker Report
         if: success() || failure()
         uses: actions/upload-artifact@v2
