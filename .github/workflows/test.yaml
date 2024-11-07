@@ -77,6 +77,12 @@ jobs:
         run: |
           node app --setup="${SETUP}" --ci="${CI}"
 
+      - name: Run OWASP ZAP Docker Scan
+        run: |
+          docker run -v $(pwd):/zap/wrk/:rw -t ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://localhost:4567 -r zap_report.html -a
+        env:
+          TARGET: 'http://localhost:4567'
+
       - name: Run ESLint
         run: npm run lint
 
